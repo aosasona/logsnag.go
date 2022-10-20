@@ -1,32 +1,11 @@
 package utils
 
 import (
-	"encoding/json"
 	"errors"
+	"io"
+	"net/http"
 	"strings"
 )
-
-type Request struct {
-	Url     string
-	Headers map[string]string
-}
-
-type Header struct {
-	Key   string
-	Value string
-}
-
-type Body interface{}
-
-type RequestConfig struct {
-	Body    Body
-	Headers []Header
-}
-
-type SendConfig struct {
-	Url string
-	RequestConfig
-}
 
 func (r *Request) New(baseUrl string, headers []Header) *Request {
 	r.Url = strings.Trim(baseUrl, "/")
@@ -39,29 +18,83 @@ func (r *Request) New(baseUrl string, headers []Header) *Request {
 	return r
 }
 
-func (r *Request) AddHeader(key string, value string) *Request {
+func (r *Request) AppendHeader(key string, value string) *Request {
 	r.Headers[key] = value
 	return r
 }
 
-func (r *Request) Send(config SendConfig) {
+func (r *Request) Send(config SendConfig) (map[string]interface{}, error) {
+	var (
+		req         *http.Response
+		res         map[string]interface{}
+		contentType string
+		err         error
+	)
 
+	url := makeEndpoint(r.Url, config.Url)
+
+	if r.Headers["Content-Type"] != "" {
+		contentType = r.Headers["Content-Type"]
+	} else {
+		contentType = "application/json"
+	}
+
+	switch config.method {
+	case GET:
+		req, err = http.Get(url)
+		break
+	case POST:
+		req, err = http.Post(url, contentType, config.Body.(io.Reader))
+		break
+	default:
+		return nil, errors.New("invalid method")
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			panic(err)
+		}
+	}(req.Body)
+
+	err = serializeResponseToStruct(req.Body, &res)
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
 
-func (r *Request) Get(endpoint string, config RequestConfig) error {
-	method := "GET"
-	endpoint = strings.Trim(endpoint, "/")
-	r.Url = r.Url + "/" + endpoint
+func (r *Request) Get(endpoint string, config RequestConfig) (map[string]interface{}, error) {
+	var (
+		err error
+		res map[string]interface{}
+	)
+
+	method := GET
 
 	if len(config.Headers) > 0 {
 		for _, header := range config.Headers {
-			r.Headers[header.Key] = header.Value
+			r.AppendHeader(header.Key, header.Value)
 		}
 	}
 
-	jsonBody, err := json.Marshal(config.Body)
+	config.Body, err = serializeBodyToBuffer(config.Body)
 	if err != nil {
-		return errors.New("cannot marshal body to json")
+		return nil, err
 	}
 
+	res, err = r.Send(SendConfig{
+		Url:    endpoint,
+		method: method,
+		Body:   config.Body,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
 }
