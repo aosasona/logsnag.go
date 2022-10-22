@@ -1,0 +1,2 @@
+#to hide api keys from git
+logsnag_test.go
