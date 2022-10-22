@@ -7,6 +7,7 @@ import (
 )
 
 func main() {
+	// Create a new logsnag client/instance
 	l := logsnag.New("YOUR_TOKEN", "YOUR_PROJECT_NAME")
 
 	// Publish an event
