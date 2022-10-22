@@ -1,6 +1,8 @@
 package utils
 
 import (
+	"bytes"
+	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -40,6 +42,12 @@ func (r *Request) Send(config SendConfig) (map[string]interface{}, error) {
 	}
 
 	client := &http.Client{}
+	body, err := json.Marshal(config.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	data := bytes.NewBuffer(body)
 
 	switch config.method {
 	case GET:
@@ -51,7 +59,7 @@ func (r *Request) Send(config SendConfig) (map[string]interface{}, error) {
 		req, err = client.Do(initialRequest)
 		break
 	case POST:
-		initialRequest, err := http.NewRequest("POST", url, config.Body.(io.Reader))
+		initialRequest, err := http.NewRequest("POST", url, data)
 		if err != nil {
 			return nil, err
 		}
@@ -98,11 +106,6 @@ func (r *Request) Get(endpoint string, config RequestConfig) (map[string]interfa
 		}
 	}
 
-	config.Body, err = serializeBodyToBuffer(config.Body)
-	if err != nil {
-		return nil, err
-	}
-
 	res, err = r.Send(SendConfig{
 		Url:    endpoint,
 		method: method,
@@ -128,11 +131,6 @@ func (r *Request) Post(endpoint string, config RequestConfig) (map[string]interf
 		for _, header := range config.Headers {
 			r.AppendHeader(header.Key, header.Value)
 		}
-	}
-
-	config.Body, err = serializeBodyToBuffer(config.Body)
-	if err != nil {
-		return nil, err
 	}
 
 	res, err = r.Send(SendConfig{
