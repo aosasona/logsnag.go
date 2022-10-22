@@ -153,3 +153,45 @@ func TestRequest_Get(t *testing.T) {
 		})
 	}
 }
+
+func TestRequest_Post(t *testing.T) {
+	type fields struct {
+		Url     string
+		Headers map[string]string
+	}
+	type args struct {
+		endpoint string
+		config   RequestConfig
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    map[string]interface{}
+		wantErr bool
+	}{
+		{
+			"post request",
+			fields{"https://jsonplaceholder.typicode.com/", map[string]string{"Content-Type": "application/json"}},
+			args{"/posts", RequestConfig{map[string]interface{}{"title": "foo", "body": "bar", "userId": 1}, []Header{}}},
+			map[string]interface{}{"title": "foo", "body": "bar"},
+			false,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			r := &Request{
+				Url:     tt.fields.Url,
+				Headers: tt.fields.Headers,
+			}
+			got, err := r.Post(tt.args.endpoint, tt.args.config)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Post() error = %v, wantErr %v", err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(map[string]interface{}{"title": got["title"], "body": got["body"]}, tt.want) {
+				t.Errorf("Post() got = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}

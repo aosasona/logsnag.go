@@ -98,3 +98,35 @@ func (r *Request) Get(endpoint string, config RequestConfig) (map[string]interfa
 
 	return res, nil
 }
+
+func (r *Request) Post(endpoint string, config RequestConfig) (map[string]interface{}, error) {
+	var (
+		err error
+		res map[string]interface{}
+	)
+
+	method := POST
+
+	if len(config.Headers) > 0 {
+		for _, header := range config.Headers {
+			r.AppendHeader(header.Key, header.Value)
+		}
+	}
+
+	config.Body, err = serializeBodyToBuffer(config.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	res, err = r.Send(SendConfig{
+		Url:    endpoint,
+		method: method,
+		Body:   config.Body,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return res, nil
+}
