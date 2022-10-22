@@ -1,6 +1,8 @@
 package logsnag
 
 import (
+	"fmt"
+
 	"github.com/aosasona/logsnag.go/utils"
 )
 
@@ -16,8 +18,8 @@ type PublishData struct {
 	event       string
 	description string
 	icon        rune
-	notify      bool
 	tags        map[string]interface{}
+	notify      bool
 }
 
 func New(token string, projectName string) *Logsnag {
@@ -26,7 +28,8 @@ func New(token string, projectName string) *Logsnag {
 
 func (l *Logsnag) Publish(data PublishData) (map[string]interface{}, error) {
 	req := utils.Request{}
-	r := req.New(endpoint, []utils.Header{{"Authorization", "Bearer " + l.token}, {"Content-Type", "application/json"}})
+	r := req.New(endpoint, []utils.Header{{"Authorization", fmt.Sprintf("Bearer %s", l.token)}, {"Content-Type", "application/json"}})
+
 	if data.channel == "" {
 		data.channel = "default"
 	}

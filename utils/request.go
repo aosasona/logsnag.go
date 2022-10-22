@@ -39,12 +39,29 @@ func (r *Request) Send(config SendConfig) (map[string]interface{}, error) {
 		contentType = "application/json"
 	}
 
+	client := &http.Client{}
+
 	switch config.method {
 	case GET:
-		req, err = http.Get(url)
+		initialRequest, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return nil, err
+		}
+		initialRequest.Header.Add("Content-Type", contentType)
+		req, err = client.Do(initialRequest)
 		break
 	case POST:
-		req, err = http.Post(url, contentType, config.Body.(io.Reader))
+		initialRequest, err := http.NewRequest("POST", url, config.Body.(io.Reader))
+		if err != nil {
+			return nil, err
+		}
+		for key, header := range r.Headers {
+			initialRequest.Header.Add(key, header)
+		}
+		req, err = client.Do(initialRequest)
+		if err != nil {
+			return nil, err
+		}
 		break
 	default:
 		return nil, errors.New("invalid method")
